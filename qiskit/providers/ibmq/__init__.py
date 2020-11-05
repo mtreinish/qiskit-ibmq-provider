@@ -85,7 +85,7 @@ from typing import List, Optional
 from datetime import datetime, timedelta
 
 from .ibmqfactory import IBMQFactory
-from .ibmqbackend import IBMQBackend, BaseBackend
+from .ibmqbackend import IBMQBackend 
 from .job import IBMQJob
 from .managed import IBMQJobManager
 from .accountprovider import AccountProvider
@@ -113,9 +113,9 @@ QISKIT_IBMQ_PROVIDER_LOG_FILE = 'QISKIT_IBMQ_PROVIDER_LOG_FILE'
 
 
 def least_busy(
-        backends: List[BaseBackend],
+        backends,
         reservation_lookahead: Optional[int] = 60
-) -> BaseBackend:
+):
     """Return the least busy backend from a list.
 
     Return the least busy available backend for those that

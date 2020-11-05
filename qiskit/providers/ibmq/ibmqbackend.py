@@ -20,8 +20,11 @@ import warnings
 from typing import Dict, List, Union, Optional, Any
 from datetime import datetime as python_datetime
 
+from qiskit.compiler import assemble
 from qiskit.qobj import QasmQobj, PulseQobj, validate_qobj_against_schema
-from qiskit.providers.basebackend import BaseBackend  # type: ignore[attr-defined]
+from qiskit.qobj.utils import MeasLevel, MeasReturnType
+from qiskit.providers.backend import BackendV1 as Backend  # type: ignore[attr-defined]
+from qiskit.providers.options import Options
 from qiskit.providers.jobstatus import JobStatus
 from qiskit.providers.models import (BackendStatus, BackendProperties,
                                      PulseDefaults, GateConfig)
@@ -49,7 +52,7 @@ from .utils.utils import api_status_to_job_status
 logger = logging.getLogger(__name__)
 
 
-class IBMQBackend(BaseBackend):
+class IBMQBackend(Backend):
     """Backend class interfacing with an IBM Quantum Experience device.
 
     You can run experiments on a backend using the :meth:`run()` method after
@@ -117,13 +120,24 @@ class IBMQBackend(BaseBackend):
         self._properties = None
         self._defaults = None
 
+    @classmethod
+    def _default_options(cls):
+        return Options(shoits=1024, memory=False,
+                       seed_simulator=None, default_qubit_los=None,
+                       default_meas_los=None, schedule_los=None, meas_level=MeasLevel.CLASSIFIED,
+                       meas_return=MeasReturnType.AVERAGE,
+                       memory_slots=None, memory_slot_size=100, rep_time=None, rep_delay=None,
+                       inst_map=None, meas_map=None, init_qubits=None)
+
+
     def run(
             self,
             qobj: Union[QasmQobj, PulseQobj],
             job_name: Optional[str] = None,
             job_share_level: Optional[str] = None,
             job_tags: Optional[List[str]] = None,
-            validate_qobj: bool = False
+            validate_qobj: bool = False,
+            **kwargs,
     ) -> IBMQJob:
         """Run a Qobj asynchronously.
 
@@ -170,6 +184,13 @@ class IBMQBackend(BaseBackend):
                     .format(job_share_level, valid_job_share_levels_str)) from None
         else:
             api_job_share_level = ApiJobShareLevel.NONE
+
+        if isinstance(qobj, (QasmQobj, PulseQobj)):
+            warnings.warn("Passing a Qobj to Backend.run is deprecated and will "
+                          " be removed in a future release", DeprecationWarning,
+                          stacklevel=2)
+        else:
+            qobj = assemble(qobj, self, **kwargs)
 
         validate_job_tags(job_tags, IBMQBackendValueError)
         if validate_qobj:
